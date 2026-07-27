@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Habit Log — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --paper:#F6F3ED;
+  --ink:#232620;
+  --ink-soft:#5B5F56;
+  --teal:#3E6E68;
+  --teal-deep:#2A4C47;
+  --clay:#B5573C;
+  --line:#DEDACD;
+  --card:#FFFFFE;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;}
+
+.login-screen{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px;width:340px;}
+.login-card h1{font-family:'Source Serif 4',serif;font-size:22px;margin:0 0 4px;}
+.login-card .sub{font-size:12px;color:var(--ink-soft);margin-bottom:20px;}
+.login-card label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:4px;}
+.login-card input{width:100%;font-family:'JetBrains Mono',monospace;font-size:13px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--paper);color:var(--ink);margin-bottom:14px;}
+.login-actions button{width:100%;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:500;cursor:pointer;background:var(--teal-deep);color:#fff;}
+.login-actions button:hover{background:var(--teal);}
+.login-msg{font-size:12px;color:var(--clay);min-height:16px;margin-top:6px;}
+
+.hidden{display:none!important;}
+
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:20px 32px;border-bottom:1px solid var(--line);
+}
+.topbar h1{font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;margin:0;}
+.topbar .sub{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.link-back{font-size:12px;color:var(--teal-deep);text-decoration:none;font-weight:500;}
+.link-back:hover{text-decoration:underline;}
+
+.period-toggle{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px;}
+.period-toggle button{
+  border:none;background:none;padding:6px 14px;font-size:12px;font-weight:500;
+  border-radius:6px;cursor:pointer;color:var(--ink-soft);
+}
+.period-toggle button.active{background:var(--teal-deep);color:#fff;}
+
+.wrap{max-width:960px;margin:0 auto;padding:24px 32px 60px;}
+
+.section-title{
+  font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;
+  margin:32px 0 4px;
+}
+.section-sub{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;}
+.card-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.chart-wrap{position:relative;height:260px;}
+.empty-state{
+  font-size:13px;color:var(--ink-soft);font-style:italic;
+  padding:40px 0;text-align:center;
+}
+.stat-strip{display:flex;gap:20px;margin-bottom:6px;flex-wrap:wrap;}
+.stat{font-family:'JetBrains Mono',monospace;}
+.stat .num{font-size:20px;font-weight:600;color:var(--teal-deep);}
+.stat .label{font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;display:block;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h1>Habit Log</h1>
+    <div class="sub">Sign in to view your dashboard</div>
+    <label>Email</label>
+    <input type="email" id="loginEmail" autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="loginPassword" autocomplete="current-password">
+    <div class="login-actions"><button id="signInBtn">Sign in</button></div>
+    <div class="login-msg" id="loginMsg"></div>
+  </div>
+</div>
+
+<div id="appWrap" class="hidden">
+  <div class="topbar">
+    <div>
+      <h1>Dashboard</h1>
+      <div class="sub">trends across sleep, naps, activity, screen time</div>
+    </div>
+    <div class="topbar-right">
+      <div class="period-toggle" id="periodToggle">
+        <button data-period="day" class="active">Day</button>
+        <button data-period="week">Week</button>
+        <button data-period="month">Month</button>
+      </div>
+      <a class="link-back" href="habit_tracker_v2.html">← Back to tracker</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="section-title">Sleep</div>
+    <div class="section-sub">Duration, stages, and resting heart rate over time (from Garmin)</div>
+    <div class="card">
+      <div class="stat-strip" id="sleepStats"></div>
+      <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="chart-wrap"><canvas id="hrChart"></canvas></div>
+    </div>
+
+    <div class="section-title">Naps vs. nighttime sleep</div>
+    <div class="section-sub">Total nap minutes on a given day, compared against that night's sleep duration</div>
+    <div class="card">
+      <div class="chart-wrap"><canvas id="napChart"></canvas></div>
+    </div>
+
+    <div class="section-title">Activity</div>
+    <div class="section-sub">Steps and calories, from Garmin</div>
+    <div class="card">
+      <div class="chart-wrap"><canvas id="activityChart"></canvas></div>
+    </div>
+
+    <div class="section-title">Screen time</div>
+    <div class="section-sub">Phone usage by category, from RescueTime</div>
+    <div class="card" id="screentimeCard">
+      <div class="chart-wrap"><canvas id="screentimeChart"></canvas></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://medwhkbncpuomkgryuge.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lZHdoa2JuY3B1b21rZ3J5dWdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjg3NDIsImV4cCI6MjEwMDc0NDc0Mn0.tAjIb2VxLWMhui2G7-kq151pHnnYbBfxzLSXI-wzar4';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const TEAL = '#3E6E68';
+const TEAL_DEEP = '#2A4C47';
+const CLAY = '#B5573C';
+const INK_SOFT = '#5B5F56';
+const LINE = '#DEDACD';
+
+let rawEntries = [];   // [{date, garmin, screentime, napMinutes, sleepManual}]
+let currentPeriod = 'day';
+let charts = {};
+
+/* ---------- auth ---------- */
+
+document.getElementById('signInBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const msg = document.getElementById('loginMsg');
+  msg.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ msg.textContent = error.message; return; }
+  await onAuthed(data.user);
+});
+
+(async function init(){
+  const { data } = await sb.auth.getSession();
+  if(data && data.session){ await onAuthed(data.session.user); }
+})();
+
+async function onAuthed(user){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appWrap').classList.remove('hidden');
+  await loadEntries(user.id);
+  renderAll();
+}
+
+/* ---------- data loading ---------- */
+
+async function loadEntries(userId){
+  const { data, error } = await sb.from('habit_entries')
+    .select('entry_date,data')
+    .eq('user_id', userId)
+    .order('entry_date');
+  if(error){ console.error(error); return; }
+
+  const byDate = {};
+  (data||[]).forEach(r=>{
+    byDate[r.entry_date] = r.data || {};
+  });
+
+  const dates = Object.keys(byDate).sort();
+  rawEntries = dates.map(date=>{
+    const d = byDate[date];
+    const garmin = d.garmin || {};
+    const screentime = d.screentime || null;
+    const naps = Array.isArray(d.naps) ? d.naps : [];
+    const napMinutes = naps.reduce((sum, n)=> sum + (Number(n.duration)||0), 0);
+    return {
+      date,
+      steps: numOrNull(garmin.steps),
+      total_calories: numOrNull(garmin.total_calories),
+      active_calories: numOrNull(garmin.active_calories),
+      total_sleep_min: numOrNull(garmin.total_sleep_min),
+      light_sleep_min: numOrNull(garmin.light_sleep_min),
+      deep_sleep_min: numOrNull(garmin.deep_sleep_min),
+      rem_sleep_min: numOrNull(garmin.rem_sleep_min),
+      awake_min: numOrNull(garmin.awake_min),
+      resting_hr_avg: numOrNull(garmin.resting_hr_avg),
+      nap_minutes: napMinutes,
+      screentime_hours: screentime ? numOrNull(screentime.total_hours) : null,
+      distracting_pct: screentime ? numOrNull(screentime.distracting_pct) + numOrNull(screentime.very_distracting_pct) : null,
+      productive_pct: screentime ? numOrNull(screentime.productive_pct) + numOrNull(screentime.very_productive_pct) : null,
+      social_pct: screentime ? numOrNull(screentime.social_networking_pct) : null,
+      entertainment_pct: screentime ? numOrNull(screentime.entertainment_pct) : null,
+    };
+  });
+
+  // attach the following night's total sleep to each day, for the naps comparison
+  const byDateIndex = {};
+  rawEntries.forEach(e=>{ byDateIndex[e.date] = e; });
+  rawEntries.forEach(e=>{
+    const next = addDays(e.date, 1);
+    const nextEntry = byDateIndex[next];
+    e.following_night_sleep_min = nextEntry ? nextEntry.total_sleep_min : null;
+  });
+}
+
+function numOrNull(v){
+  const n = Number(v);
+  return (v===null || v===undefined || v==='' || isNaN(n)) ? null : n;
+}
+function addDays(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+/* ---------- aggregation ---------- */
+
+function periodKey(dateStr, period){
+  if(period==='day') return dateStr;
+  const d = new Date(dateStr+'T00:00:00');
+  if(period==='week'){
+    const dow = (d.getDay()+6)%7; // Monday = 0
+    d.setDate(d.getDate()-dow);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  return dateStr.slice(0,7); // YYYY-MM
+}
+
+function aggregate(entries, period, fields){
+  const groups = {};
+  entries.forEach(e=>{
+    const key = periodKey(e.date, period);
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+  return Object.keys(groups).sort().map(key=>{
+    const items = groups[key];
+    const out = { label: key };
+    fields.forEach(f=>{
+      const vals = items.map(i=>i[f]).filter(v=>v!==null && v!==undefined);
+      out[f] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+    });
+    return out;
+  });
+}
+
+/* ---------- rendering ---------- */
+
+document.querySelectorAll('#periodToggle button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#periodToggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentPeriod = btn.dataset.period;
+    renderAll();
+  });
+});
+
+function destroyChart(id){
+  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+}
+
+function renderAll(){
+  renderSleep();
+  renderHr();
+  renderNaps();
+  renderActivity();
+  renderScreentime();
+}
+
+function renderSleep(){
+  const agg = aggregate(rawEntries, currentPeriod,
+    ['total_sleep_min','light_sleep_min','deep_sleep_min','rem_sleep_min','awake_min']);
+
+  const withData = agg.filter(a=>a.total_sleep_min!==null);
+  const avgTotal = withData.length ? Math.round(withData.reduce((s,a)=>s+a.total_sleep_min,0)/withData.length) : null;
+  document.getElementById('sleepStats').innerHTML = avgTotal
+    ? `<div class="stat"><span class="num">${(avgTotal/60).toFixed(1)}h</span><span class="label">avg sleep / night</span></div>`
+    : '';
+
+  destroyChart('sleepChart');
+  const ctx = document.getElementById('sleepChart');
+  charts.sleepChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: agg.map(a=>a.label),
+      datasets: [
+        { label:'Light', data: agg.map(a=>a.light_sleep_min), backgroundColor:'#A9C6C0', stack:'s' },
+        { label:'Deep', data: agg.map(a=>a.deep_sleep_min), backgroundColor: TEAL_DEEP, stack:'s' },
+        { label:'REM', data: agg.map(a=>a.rem_sleep_min), backgroundColor: TEAL, stack:'s' },
+        { label:'Awake', data: agg.map(a=>a.awake_min), backgroundColor: CLAY, stack:'s' },
+      ]
+    },
+    options: chartOptions('Minutes')
+  });
+}
+
+function renderHr(){
+  const agg = aggregate(rawEntries, currentPeriod, ['resting_hr_avg']);
+  destroyChart('hrChart');
+  const ctx = document.getElementById('hrChart');
+  charts.hrChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: agg.map(a=>a.label),
+      datasets: [{ label:'Resting HR (bpm)', data: agg.map(a=>a.resting_hr_avg), borderColor: TEAL_DEEP, backgroundColor: TEAL_DEEP, tension:.25 }]
+    },
+    options: chartOptions('bpm')
+  });
+}
+
+function renderNaps(){
+  const agg = aggregate(rawEntries, currentPeriod, ['nap_minutes','following_night_sleep_min']);
+  destroyChart('napChart');
+  const ctx = document.getElementById('napChart');
+  charts.napChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: agg.map(a=>a.label),
+      datasets: [
+        { label:'Nap minutes (that day)', data: agg.map(a=>a.nap_minutes), backgroundColor: CLAY },
+        { label:'Sleep that night (min)', data: agg.map(a=>a.following_night_sleep_min), backgroundColor: TEAL_DEEP, type:'line', borderColor: TEAL_DEEP, yAxisID:'y1' },
+      ]
+    },
+    options: {
+      ...chartOptions('Minutes'),
+      scales: {
+        y: { beginAtZero:true, grid:{color:LINE} },
+        y1: { beginAtZero:true, position:'right', grid:{display:false} },
+        x: { grid:{display:false} }
+      }
+    }
+  });
+}
+
+function renderActivity(){
+  const agg = aggregate(rawEntries, currentPeriod, ['steps','total_calories']);
+  destroyChart('activityChart');
+  const ctx = document.getElementById('activityChart');
+  charts.activityChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: agg.map(a=>a.label),
+      datasets: [
+        { label:'Steps', data: agg.map(a=>a.steps), backgroundColor: TEAL, yAxisID:'y' },
+        { label:'Total calories', data: agg.map(a=>a.total_calories), type:'line', borderColor: CLAY, backgroundColor: CLAY, yAxisID:'y1' },
+      ]
+    },
+    options: {
+      ...chartOptions('Steps'),
+      scales: {
+        y: { beginAtZero:true, grid:{color:LINE} },
+        y1: { beginAtZero:true, position:'right', grid:{display:false} },
+        x: { grid:{display:false} }
+      }
+    }
+  });
+}
+
+function renderScreentime(){
+  const hasAny = rawEntries.some(e=>e.screentime_hours!==null);
+  const card = document.getElementById('screentimeCard');
+  if(!hasAny){
+    card.innerHTML = '<div class="empty-state">No RescueTime data yet. This fills in automatically once a day or two of phone activity has synced.</div>';
+    return;
+  }
+  if(!document.getElementById('screentimeChart')){
+    card.innerHTML = '<div class="chart-wrap"><canvas id="screentimeChart"></canvas></div>';
+  }
+  const agg = aggregate(rawEntries, currentPeriod, ['distracting_pct','productive_pct','social_pct','entertainment_pct']);
+  destroyChart('screentimeChart');
+  const ctx = document.getElementById('screentimeChart');
+  charts.screentimeChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: agg.map(a=>a.label),
+      datasets: [
+        { label:'Distracting %', data: agg.map(a=>a.distracting_pct), borderColor: CLAY, backgroundColor: CLAY, tension:.25 },
+        { label:'Productive %', data: agg.map(a=>a.productive_pct), borderColor: TEAL_DEEP, backgroundColor: TEAL_DEEP, tension:.25 },
+        { label:'Social networking %', data: agg.map(a=>a.social_pct), borderColor: TEAL, backgroundColor: TEAL, tension:.25 },
+      ]
+    },
+    options: chartOptions('% of tracked time')
+  });
+}
+
+function chartOptions(yLabel){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color: INK_SOFT, font:{ family:'Inter' } } } },
+    scales:{
+      x:{ grid:{display:false}, ticks:{ color: INK_SOFT, font:{size:11} } },
+      y:{ beginAtZero:true, grid:{color:LINE}, ticks:{ color: INK_SOFT, font:{size:11} }, title:{display:true, text:yLabel, color:INK_SOFT} }
+    }
+  };
+}
+</script>
+</body>
+</html>
