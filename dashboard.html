@@ -4,71 +4,75 @@
 <meta charset="UTF-8">
 <title>Habit Log — Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root{
-  --paper:#F6F3ED;
-  --ink:#232620;
-  --ink-soft:#5B5F56;
-  --teal:#3E6E68;
-  --teal-deep:#2A4C47;
-  --clay:#B5573C;
-  --line:#DEDACD;
-  --card:#FFFFFE;
+  --paper: oklch(96% .015 70);
+  --ink: oklch(25% .02 70);
+  --ink-soft: oklch(50% .02 70);
+  --ink-softer: oklch(55% .02 70);
+  --card: oklch(99% .008 70);
+  --pill: oklch(92% .01 70);
+  --track: oklch(92% .008 70);
+  --line: oklch(90% .01 70);
+  --line-soft: oklch(92% .008 70);
+  --green: oklch(55% .06 150);
+  --yellow: oklch(83% .14 95);
+  --red: oklch(65% .1 40);
+  --gray: oklch(90% .01 70);
+  --target-line: oklch(45% .02 70 / 45%);
 }
 *{box-sizing:border-box;}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;}
+a{color:var(--green);}
+a:hover{color:oklch(45% .06 150);}
 
 .login-screen{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;}
-.login-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px;width:340px;}
-.login-card h1{font-family:'Source Serif 4',serif;font-size:22px;margin:0 0 4px;}
+.login-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px;width:340px;}
+.login-card h1{font-family:'Source Serif 4',serif;font-size:24px;margin:0 0 4px;font-weight:600;}
 .login-card .sub{font-size:12px;color:var(--ink-soft);margin-bottom:20px;}
 .login-card label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:4px;}
-.login-card input{width:100%;font-family:'JetBrains Mono',monospace;font-size:13px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--paper);color:var(--ink);margin-bottom:14px;}
-.login-actions button{width:100%;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:500;cursor:pointer;background:var(--teal-deep);color:#fff;}
-.login-actions button:hover{background:var(--teal);}
-.login-msg{font-size:12px;color:var(--clay);min-height:16px;margin-top:6px;}
+.login-card input{width:100%;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--paper);color:var(--ink);margin-bottom:14px;}
+.login-actions button{width:100%;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:500;cursor:pointer;background:var(--green);color:#fff;}
+.login-actions button:hover{background:oklch(45% .06 150);}
+.login-msg{font-size:12px;color:var(--red);min-height:16px;margin-top:6px;}
 
 .hidden{display:none!important;}
 
-.topbar{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:20px 32px;border-bottom:1px solid var(--line);
-}
-.topbar h1{font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;margin:0;}
-.topbar .sub{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
-.topbar-right{display:flex;align-items:center;gap:14px;}
-.link-back{font-size:12px;color:var(--teal-deep);text-decoration:none;font-weight:500;}
+.wrap{max-width:760px;margin:0 auto;padding:40px 24px 60px;}
+
+.topbar{margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+.eyebrow{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-softer);margin-bottom:6px;}
+.greeting{font-family:'Source Serif 4',serif;font-size:26px;font-weight:600;}
+.sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+.link-back{font-size:11px;color:var(--green);text-decoration:none;font-weight:500;white-space:nowrap;margin-top:2px;}
 .link-back:hover{text-decoration:underline;}
 
-.period-toggle{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px;}
-.period-toggle button{
-  border:none;background:none;padding:6px 14px;font-size:12px;font-weight:500;
-  border-radius:6px;cursor:pointer;color:var(--ink-soft);
-}
-.period-toggle button.active{background:var(--teal-deep);color:#fff;}
+.tabbar{display:flex;gap:6px;margin-bottom:20px;background:var(--pill);border-radius:12px;padding:4px;}
+.tabbar button{flex:1;border:none;border-radius:9px;padding:8px 0;font-size:12px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;background:transparent;color:var(--ink-soft);}
+.tabbar button.active{background:var(--green);color:#fff;}
 
-.wrap{max-width:960px;margin:0 auto;padding:24px 32px 60px;}
+.card{background:var(--card);border-radius:18px;padding:22px;margin-bottom:16px;}
+.card-title{font-family:'Source Serif 4',serif;font-size:15px;font-weight:600;margin-bottom:4px;}
+.card-sub{font-size:12px;color:var(--ink-soft);margin-bottom:16px;}
 
-.section-title{
-  font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;
-  margin:32px 0 4px;
-}
-.section-sub{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+.stat-strip{display:flex;gap:0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.stat{flex:1;text-align:center;}
+.stat + .stat{border-left:1px solid var(--line);}
+.stat .num{font-size:19px;font-weight:600;}
+.stat .label{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-top:2px;}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;}
-.card-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-.chart-wrap{position:relative;height:260px;}
-.empty-state{
-  font-size:13px;color:var(--ink-soft);font-style:italic;
-  padding:40px 0;text-align:center;
-}
-.stat-strip{display:flex;gap:20px;margin-bottom:6px;flex-wrap:wrap;}
-.stat{font-family:'JetBrains Mono',monospace;}
-.stat .num{font-size:20px;font-weight:600;color:var(--teal-deep);}
-.stat .label{font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;display:block;}
+.row{display:flex;align-items:center;gap:10px;}
+.legend{display:flex;flex-direction:column;gap:5px;font-size:9px;color:var(--ink-soft);border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px;}
+.legend-inline{display:flex;gap:18px;flex-wrap:wrap;font-size:9px;color:var(--ink-soft);margin-top:14px;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+.empty{font-size:11px;color:oklch(60% .02 70);font-style:italic;}
+
+.card-row{display:flex;gap:16px;align-items:stretch;margin-bottom:18px;}
+.card-row > .card{flex:1;min-width:0;margin-bottom:0;}
+
+.footer-note{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:12px 16px;font-size:12px;color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -87,52 +91,35 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-
 </div>
 
 <div id="appWrap" class="hidden">
+<div class="wrap">
+
   <div class="topbar">
     <div>
-      <h1>Dashboard</h1>
-      <div class="sub">trends across sleep, naps, activity, screen time</div>
+      <div class="eyebrow">Habit Log</div>
+      <div class="greeting" id="greeting">Good evening, David</div>
+      <div class="sub">Here's how this week has felt — bedtime, wind-down, screens, movement</div>
     </div>
-    <div class="topbar-right">
-      <div class="period-toggle" id="periodToggle">
-        <button data-period="day" class="active">Day</button>
-        <button data-period="week">Week</button>
-        <button data-period="month">Month</button>
-      </div>
-      <a class="link-back" href="habit_tracker_v2.html">← Back to tracker</a>
-    </div>
+    <a class="link-back" href="habit_tracker_v2.html">← Back to tracker</a>
   </div>
 
-  <div class="wrap">
-
-    <div class="section-title">Sleep</div>
-    <div class="section-sub">Duration, stages, and resting heart rate over time (from Garmin)</div>
-    <div class="card">
-      <div class="stat-strip" id="sleepStats"></div>
-      <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="chart-wrap"><canvas id="hrChart"></canvas></div>
-    </div>
-
-    <div class="section-title">Naps vs. nighttime sleep</div>
-    <div class="section-sub">Total nap minutes on a given day, compared against that night's sleep duration</div>
-    <div class="card">
-      <div class="chart-wrap"><canvas id="napChart"></canvas></div>
-    </div>
-
-    <div class="section-title">Activity</div>
-    <div class="section-sub">Steps and calories, from Garmin</div>
-    <div class="card">
-      <div class="chart-wrap"><canvas id="activityChart"></canvas></div>
-    </div>
-
-    <div class="section-title">Screen time</div>
-    <div class="section-sub">Phone usage by category, from RescueTime</div>
-    <div class="card" id="screentimeCard">
-      <div class="chart-wrap"><canvas id="screentimeChart"></canvas></div>
-    </div>
-
+  <div class="tabbar" id="tabbar">
+    <button data-tab="sleep" class="active">Sleep</button>
+    <button data-tab="exercise">Exercise</button>
+    <button data-tab="phone">Phone</button>
+    <button data-tab="diet">Diet</button>
   </div>
+
+  <div id="tab-sleep"></div>
+  <div id="tab-exercise" class="hidden"></div>
+  <div id="tab-phone" class="hidden"></div>
+  <div id="tab-diet" class="hidden"></div>
+
+  <div class="footer-note">
+    <span style="font-size:14px;">✎</span>
+    <span>Tell Claude about today, or it'll fill in from Garmin overnight</span>
+  </div>
+
+</div>
 </div>
 
 <script>
@@ -140,15 +127,7 @@ const SUPABASE_URL = 'https://medwhkbncpuomkgryuge.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lZHdoa2JuY3B1b21rZ3J5dWdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjg3NDIsImV4cCI6MjEwMDc0NDc0Mn0.tAjIb2VxLWMhui2G7-kq151pHnnYbBfxzLSXI-wzar4';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TEAL = '#3E6E68';
-const TEAL_DEEP = '#2A4C47';
-const CLAY = '#B5573C';
-const INK_SOFT = '#5B5F56';
-const LINE = '#DEDACD';
-
-let rawEntries = [];   // [{date, garmin, screentime, napMinutes, sleepManual}]
-let currentPeriod = 'day';
-let charts = {};
+let rawEntries = [];
 
 /* ---------- auth ---------- */
 
@@ -170,60 +149,13 @@ document.getElementById('signInBtn').addEventListener('click', async ()=>{
 async function onAuthed(user){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appWrap').classList.remove('hidden');
+  const hr = new Date().getHours();
+  document.getElementById('greeting').textContent = (hr<12?'Good morning, ':hr<18?'Good afternoon, ':'Good evening, ') + 'David';
   await loadEntries(user.id);
   renderAll();
 }
 
 /* ---------- data loading ---------- */
-
-async function loadEntries(userId){
-  const { data, error } = await sb.from('habit_entries')
-    .select('entry_date,data')
-    .eq('user_id', userId)
-    .order('entry_date');
-  if(error){ console.error(error); return; }
-
-  const byDate = {};
-  (data||[]).forEach(r=>{
-    byDate[r.entry_date] = r.data || {};
-  });
-
-  const dates = Object.keys(byDate).sort();
-  rawEntries = dates.map(date=>{
-    const d = byDate[date];
-    const garmin = d.garmin || {};
-    const screentime = d.screentime || null;
-    const naps = Array.isArray(d.naps) ? d.naps : [];
-    const napMinutes = naps.reduce((sum, n)=> sum + (Number(n.duration)||0), 0);
-    return {
-      date,
-      steps: numOrNull(garmin.steps),
-      total_calories: numOrNull(garmin.total_calories),
-      active_calories: numOrNull(garmin.active_calories),
-      total_sleep_min: numOrNull(garmin.total_sleep_min),
-      light_sleep_min: numOrNull(garmin.light_sleep_min),
-      deep_sleep_min: numOrNull(garmin.deep_sleep_min),
-      rem_sleep_min: numOrNull(garmin.rem_sleep_min),
-      awake_min: numOrNull(garmin.awake_min),
-      resting_hr_avg: numOrNull(garmin.resting_hr_avg),
-      nap_minutes: napMinutes,
-      screentime_hours: screentime ? numOrNull(screentime.total_hours) : null,
-      distracting_pct: screentime ? numOrNull(screentime.distracting_pct) + numOrNull(screentime.very_distracting_pct) : null,
-      productive_pct: screentime ? numOrNull(screentime.productive_pct) + numOrNull(screentime.very_productive_pct) : null,
-      social_pct: screentime ? numOrNull(screentime.social_networking_pct) : null,
-      entertainment_pct: screentime ? numOrNull(screentime.entertainment_pct) : null,
-    };
-  });
-
-  // attach the following night's total sleep to each day, for the naps comparison
-  const byDateIndex = {};
-  rawEntries.forEach(e=>{ byDateIndex[e.date] = e; });
-  rawEntries.forEach(e=>{
-    const next = addDays(e.date, 1);
-    const nextEntry = byDateIndex[next];
-    e.following_night_sleep_min = nextEntry ? nextEntry.total_sleep_min : null;
-  });
-}
 
 function numOrNull(v){
   const n = Number(v);
@@ -235,185 +167,480 @@ function addDays(dateStr, n){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
-/* ---------- aggregation ---------- */
+async function loadEntries(userId){
+  const { data, error } = await sb.from('habit_entries')
+    .select('entry_date,data')
+    .eq('user_id', userId)
+    .order('entry_date');
+  if(error){ console.error(error); return; }
 
-function periodKey(dateStr, period){
-  if(period==='day') return dateStr;
-  const d = new Date(dateStr+'T00:00:00');
-  if(period==='week'){
-    const dow = (d.getDay()+6)%7; // Monday = 0
-    d.setDate(d.getDate()-dow);
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  }
-  return dateStr.slice(0,7); // YYYY-MM
+  const byDate = {};
+  (data||[]).forEach(r=>{ byDate[r.entry_date] = r.data || {}; });
+  const dates = Object.keys(byDate).sort();
+
+  rawEntries = dates.map(date=>{
+    const d = byDate[date];
+    const garmin = d.garmin || {};
+    const screentime = d.screentime || null;
+    const naps = Array.isArray(d.naps) ? d.naps : [];
+    const napMinutes = naps.reduce((sum,n)=> sum + (Number(n.duration)||0), 0);
+    const sleep = d.sleep || {};
+    const preBed = d.pre_bed_routine || {};
+    const exercise = Array.isArray(d.exercise) ? d.exercise : [];
+    const general = d.general || {};
+    return {
+      date,
+      steps: numOrNull(garmin.steps),
+      total_calories: numOrNull(garmin.total_calories),
+      total_sleep_min: numOrNull(garmin.total_sleep_min),
+      awake_min: numOrNull(garmin.awake_min),
+      bedtime: sleep.bedtime || null,
+      wake_time: sleep.wake_time || null,
+      garmin_sleep_start: garmin.sleep_start || null,
+      garmin_sleep_end: garmin.sleep_end || null,
+      awakenings_text: sleep.awakenings || '',
+      zopiclone_taken: sleep.took_zopiclone === 'Yes',
+      zopiclone_logged: sleep.took_zopiclone === 'Yes' || sleep.took_zopiclone === 'No',
+      stretch_min: numOrNull(preBed.stretch_duration_min),
+      read_min: numOrNull(preBed.read_duration_min),
+      tv_min: numOrNull(preBed.tv_duration_min),
+      phone_bed_min: numOrNull(preBed.phone_bed_duration_min),
+      nap_minutes: napMinutes,
+      nap_count: naps.length,
+      exercise,
+      meals: general.meals || '',
+      screentime_hours: screentime ? numOrNull(screentime.total_hours) : null,
+      productivity_pulse: screentime ? numOrNull(screentime.productivity_pulse) : null,
+      productive_pct: screentime ? (numOrNull(screentime.productive_pct)||0) + (numOrNull(screentime.very_productive_pct)||0) : null,
+      distracting_pct: screentime ? (numOrNull(screentime.distracting_pct)||0) + (numOrNull(screentime.very_distracting_pct)||0) : null,
+    };
+  });
 }
 
-function aggregate(entries, period, fields){
-  const groups = {};
-  entries.forEach(e=>{
-    const key = periodKey(e.date, period);
-    if(!groups[key]) groups[key] = [];
-    groups[key].push(e);
-  });
-  return Object.keys(groups).sort().map(key=>{
-    const items = groups[key];
-    const out = { label: key };
-    fields.forEach(f=>{
-      const vals = items.map(i=>i[f]).filter(v=>v!==null && v!==undefined);
-      out[f] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
-    });
-    return out;
-  });
+/* ---------- time helpers ---------- */
+
+function parseDatetimeToMinutes(str){
+  if(!str) return null;
+  const m = str.match(/(\d{2}):(\d{2})(?::\d{2})?\s*$/) || str.match(/T(\d{2}):(\d{2})/);
+  if(!m) return null;
+  return parseInt(m[1],10)*60+parseInt(m[2],10);
+}
+function parseClockToMinutes(str){
+  if(!str) return null;
+  const s = str.trim().toLowerCase();
+  const m = s.match(/^(\d{1,2}):(\d{2})\s*(am|pm|a|p)?$/);
+  if(!m) return null;
+  let h = parseInt(m[1],10), mm = parseInt(m[2],10);
+  const ap = m[3] ? m[3][0] : null;
+  if(ap==='p' && h!==12) h += 12;
+  if(ap==='a' && h===12) h = 0;
+  if(h>23||mm>59) return null;
+  return h*60+mm;
+}
+// position within the 10pm -> 8am window (600 min), 0-100, or null if outside
+function pctFromWindow(minutes){
+  if(minutes===null) return null;
+  const start = 22*60;
+  const rel = minutes>=start ? minutes-start : minutes+(1440-start);
+  if(rel<0||rel>600) return null;
+  return rel/600*100;
+}
+function fmtClock(mins){
+  if(mins===null||mins===undefined||isNaN(mins)) return '–';
+  let h = Math.floor(mins/60)%24, m = Math.round(mins%60);
+  if(m===60){m=0;h=(h+1)%24;}
+  const ap = h<12?'a':'p';
+  let h12 = h%12; if(h12===0) h12=12;
+  return h12+':'+String(m).padStart(2,'0')+ap;
+}
+function fmtDur(mins){
+  if(mins===null||mins===undefined||isNaN(mins)) return '–';
+  const h = Math.floor(mins/60), m = Math.round(mins%60);
+  return h+'h'+String(m).padStart(2,'0')+'m';
+}
+function avg(arr){
+  const v = arr.filter(x=>x!==null&&x!==undefined&&!isNaN(x));
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
+}
+function parseAwakenings(text){
+  if(!text) return { count:0, times:[] };
+  const t = text.trim();
+  if(/^(none|no|0)$/i.test(t)) return { count:0, times:[] };
+  const tokens = t.split(/[,;]/).map(x=>x.trim()).filter(Boolean);
+  const times = tokens.map(parseClockToMinutes).filter(x=>x!==null);
+  return { count: tokens.length, times };
 }
 
-/* ---------- rendering ---------- */
+/* ---------- week window ---------- */
 
-document.querySelectorAll('#periodToggle button').forEach(btn=>{
+function lastNDates(n){
+  const byDate = {}; rawEntries.forEach(e=>byDate[e.date]=e);
+  const latest = rawEntries.length ? rawEntries[rawEntries.length-1].date : (new Date()).toISOString().slice(0,10);
+  const out = [];
+  for(let i=n-1;i>=0;i--){ out.push(addDays(latest,-i)); }
+  return out.map(date=>({ date, weekday: new Date(date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short'}), entry: byDate[date]||null }));
+}
+
+/* ---------- tabs ---------- */
+
+document.querySelectorAll('#tabbar button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#periodToggle button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#tabbar button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-    currentPeriod = btn.dataset.period;
-    renderAll();
+    ['sleep','exercise','phone','diet'].forEach(t=>{
+      document.getElementById('tab-'+t).classList.toggle('hidden', t!==btn.dataset.tab);
+    });
   });
 });
 
-function destroyChart(id){
-  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
-}
-
 function renderAll(){
-  renderSleep();
-  renderHr();
-  renderNaps();
-  renderActivity();
-  renderScreentime();
+  const week = lastNDates(7);
+  renderSleep(week);
+  renderExercise(week);
+  renderPhone(week);
+  renderDiet(week);
 }
 
-function renderSleep(){
-  const agg = aggregate(rawEntries, currentPeriod,
-    ['total_sleep_min','light_sleep_min','deep_sleep_min','rem_sleep_min','awake_min']);
+/* ---------- Sleep tab ---------- */
 
-  const withData = agg.filter(a=>a.total_sleep_min!==null);
-  const avgTotal = withData.length ? Math.round(withData.reduce((s,a)=>s+a.total_sleep_min,0)/withData.length) : null;
-  document.getElementById('sleepStats').innerHTML = avgTotal
-    ? `<div class="stat"><span class="num">${(avgTotal/60).toFixed(1)}h</span><span class="label">avg sleep / night</span></div>`
-    : '';
-
-  destroyChart('sleepChart');
-  const ctx = document.getElementById('sleepChart');
-  charts.sleepChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: agg.map(a=>a.label),
-      datasets: [
-        { label:'Light', data: agg.map(a=>a.light_sleep_min), backgroundColor:'#A9C6C0', stack:'s' },
-        { label:'Deep', data: agg.map(a=>a.deep_sleep_min), backgroundColor: TEAL_DEEP, stack:'s' },
-        { label:'REM', data: agg.map(a=>a.rem_sleep_min), backgroundColor: TEAL, stack:'s' },
-        { label:'Awake', data: agg.map(a=>a.awake_min), backgroundColor: CLAY, stack:'s' },
-      ]
-    },
-    options: chartOptions('Minutes')
-  });
-}
-
-function renderHr(){
-  const agg = aggregate(rawEntries, currentPeriod, ['resting_hr_avg']);
-  destroyChart('hrChart');
-  const ctx = document.getElementById('hrChart');
-  charts.hrChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: agg.map(a=>a.label),
-      datasets: [{ label:'Resting HR (bpm)', data: agg.map(a=>a.resting_hr_avg), borderColor: TEAL_DEEP, backgroundColor: TEAL_DEEP, tension:.25 }]
-    },
-    options: chartOptions('bpm')
-  });
-}
-
-function renderNaps(){
-  const agg = aggregate(rawEntries, currentPeriod, ['nap_minutes','following_night_sleep_min']);
-  destroyChart('napChart');
-  const ctx = document.getElementById('napChart');
-  charts.napChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: agg.map(a=>a.label),
-      datasets: [
-        { label:'Nap minutes (that day)', data: agg.map(a=>a.nap_minutes), backgroundColor: CLAY },
-        { label:'Sleep that night (min)', data: agg.map(a=>a.following_night_sleep_min), backgroundColor: TEAL_DEEP, type:'line', borderColor: TEAL_DEEP, yAxisID:'y1' },
-      ]
-    },
-    options: {
-      ...chartOptions('Minutes'),
-      scales: {
-        y: { beginAtZero:true, grid:{color:LINE} },
-        y1: { beginAtZero:true, position:'right', grid:{display:false} },
-        x: { grid:{display:false} }
-      }
+function renderSleep(week){
+  const days = week.map(w=>{
+    const e = w.entry;
+    const bedMin = e ? (parseClockToMinutes(e.bedtime) ?? parseDatetimeToMinutes(e.garmin_sleep_start)) : null;
+    const wakeMin = e ? (parseClockToMinutes(e.wake_time) ?? parseDatetimeToMinutes(e.garmin_sleep_end)) : null;
+    const aw = e ? parseAwakenings(e.awakenings_text) : {count:null, times:[]};
+    let totalSleep = e ? e.total_sleep_min : null;
+    if(totalSleep===null && bedMin!==null && wakeMin!==null){
+      const rel = wakeMin>=bedMin ? wakeMin-bedMin : wakeMin+1440-bedMin;
+      totalSleep = rel - (e.awake_min||0);
     }
+    return { ...w, bedMin, wakeMin, awCount: aw.count, awTimes: aw.times, totalSleep };
   });
-}
 
-function renderActivity(){
-  const agg = aggregate(rawEntries, currentPeriod, ['steps','total_calories']);
-  destroyChart('activityChart');
-  const ctx = document.getElementById('activityChart');
-  charts.activityChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: agg.map(a=>a.label),
-      datasets: [
-        { label:'Steps', data: agg.map(a=>a.steps), backgroundColor: TEAL, yAxisID:'y' },
-        { label:'Total calories', data: agg.map(a=>a.total_calories), type:'line', borderColor: CLAY, backgroundColor: CLAY, yAxisID:'y1' },
-      ]
-    },
-    options: {
-      ...chartOptions('Steps'),
-      scales: {
-        y: { beginAtZero:true, grid:{color:LINE} },
-        y1: { beginAtZero:true, position:'right', grid:{display:false} },
-        x: { grid:{display:false} }
-      }
+  const avgBed = avg(days.map(d=>d.bedMin!==null?pctFromWindow(d.bedMin):null));
+  const avgWake = avg(days.map(d=>d.wakeMin!==null?pctFromWindow(d.wakeMin):null));
+  const avgSleep = avg(days.map(d=>d.totalSleep));
+  const avgAw = avg(days.map(d=>d.awCount));
+
+  const bedClock = avgBed!==null ? fmtClock((22*60+avgBed/100*600)%1440) : '–';
+  const wakeClock = avgWake!==null ? fmtClock((22*60+avgWake/100*600)%1440) : '–';
+
+  const rows = days.map(d=>{
+    if(d.bedMin===null || d.wakeMin===null){
+      return `<div class="row"><span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span><span class="empty" style="flex:1;">no data logged</span></div>`;
     }
+    const bedPct = pctFromWindow(d.bedMin), wakePct = pctFromWindow(d.wakeMin);
+    const good = d.totalSleep!==null && d.totalSleep>=420;
+    const barColor = good ? 'var(--green)' : 'var(--red)';
+    const left = bedPct===null?0:bedPct;
+    const width = (wakePct===null?100:wakePct) - left;
+    const ticks = d.awTimes.map(t=>{
+      const p = pctFromWindow(t);
+      if(p===null) return '';
+      return `<div style="position:absolute;top:50%;left:${p}%;width:2px;height:10px;background:var(--paper);transform:translate(-50%,-50%);"></div>`;
+    }).join('');
+    const awLabel = d.awCount===0 ? 'no awakenings' : d.awCount+' awakening'+(d.awCount>1?'s':'');
+    return `<div class="row">
+      <span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span>
+      <span style="width:44px;font-size:10px;font-weight:500;color:var(--ink-soft);text-align:right;">${fmtClock(d.bedMin)}</span>
+      <div style="position:relative;flex:1;height:18px;">
+        <div style="position:absolute;top:50%;left:0;right:0;height:6px;background:var(--track);border-radius:3px;transform:translateY(-50%);"></div>
+        <div style="position:absolute;top:50%;left:${left}%;width:${width}%;height:10px;background:${barColor};border-radius:5px;transform:translateY(-50%);"></div>
+        ${ticks}
+        <div style="position:absolute;top:0;bottom:0;left:5%;width:0;border-left:1.5px dashed var(--target-line);"></div>
+      </div>
+      <span style="width:38px;font-size:10px;color:var(--ink-soft);">${fmtClock(d.wakeMin)}</span>
+      <span style="width:96px;font-size:10px;color:var(--ink-soft);text-align:right;">${fmtDur(d.totalSleep)} &middot; ${awLabel}</span>
+    </div>`;
+  }).join('');
+
+  const axis = ['10p','11p','12a','1a','2a','3a','4a','5a','6a','7a','8a'].map((l,i)=>{
+    const pct = i*10;
+    const style = i===0 ? `left:0%;` : i===10 ? `left:100%;transform:translateX(-100%);` : `left:${pct}%;transform:translateX(-50%);`;
+    return `<span style="position:absolute;${style}font-size:9px;color:var(--ink-softer);">${l}</span>`;
+  }).join('');
+
+  const disruptionRows = days.map(d=>{
+    if(!d.entry) return null;
+    return d;
   });
+
+  const zopRow = days.map(d=>{
+    if(!d.entry || !d.entry.zopiclone_logged) return `<span style="width:16px;height:16px;border-radius:50%;background:var(--gray);"></span>`;
+    return `<span style="width:16px;height:16px;border-radius:50%;background:${d.entry.zopiclone_taken?'var(--red)':'var(--green)'};"></span>`;
+  }).join('');
+  const awRow = days.map(d=>{
+    if(d.awCount===null) return `<span style="width:16px;height:16px;border-radius:50%;background:var(--gray);"></span>`;
+    const c = d.awCount===0?'var(--green)':d.awCount===1?'var(--yellow)':'var(--red)';
+    return `<span style="width:16px;height:16px;border-radius:50%;background:${c};"></span>`;
+  }).join('');
+  const napRow = days.map(d=>{
+    const n = d.entry ? d.entry.nap_minutes : null;
+    if(n===null||n===undefined) return `<span style="width:16px;height:16px;border-radius:50%;background:var(--gray);"></span>`;
+    const c = n===0?'var(--gray)':n<30?'var(--yellow)':'var(--red)';
+    return `<span style="width:16px;height:16px;border-radius:50%;background:${c};"></span>`;
+  }).join('');
+
+  function windRow(kind){
+    return days.map(d=>{
+      const e = d.entry;
+      const v = e ? (kind==='stretch'?e.stretch_min:kind==='read'?e.read_min:kind==='tv'?e.tv_min:e.phone_bed_min) : null;
+      let color;
+      if(kind==='stretch'||kind==='read'){
+        const good = kind==='stretch' ? 5 : 15;
+        color = (v===null||v===undefined) ? 'var(--gray)' : v>=good ? 'var(--green)' : v>0 ? 'var(--yellow)' : 'var(--gray)';
+      } else {
+        if(v===null||v===undefined||v===0) color='var(--green)';
+        else if(v<15) color='var(--green)';
+        else if(v<=30) color='var(--yellow)';
+        else color='var(--red)';
+      }
+      return `<span style="width:16px;height:16px;border-radius:50%;background:${color};"></span>`;
+    }).join('');
+  }
+
+  document.getElementById('tab-sleep').innerHTML = `
+  <div class="card">
+    <div class="card-title">Sleep this week</div>
+    <div class="card-sub">Bedtime to wake, with breaks in the night marked</div>
+    <div class="stat-strip">
+      <div class="stat"><div class="num">${bedClock}</div><div class="label">avg bedtime</div></div>
+      <div class="stat"><div class="num">${wakeClock}</div><div class="label">avg wake</div></div>
+      <div class="stat"><div class="num">${fmtDur(avgSleep)}</div><div class="label">avg sleep</div></div>
+      <div class="stat"><div class="num">${avgAw!==null?avgAw.toFixed(1):'–'}</div><div class="label">avg awakenings</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px;">${rows}</div>
+    <div class="row" style="margin-top:2px;">
+      <span style="width:28px;"></span><span style="width:44px;"></span>
+      <div style="position:relative;flex:1;height:14px;">${axis}</div>
+      <span style="width:38px;"></span><span style="width:96px;"></span>
+    </div>
+    <div class="legend-inline">
+      <span><span class="dot" style="width:16px;height:8px;border-radius:4px;background:var(--green);"></span>7h+ sleep</span>
+      <span><span class="dot" style="width:16px;height:8px;border-radius:4px;background:var(--red);"></span>under 7h</span>
+      <span><span class="dot" style="width:2px;height:9px;background:var(--paper);border:1px solid var(--line);border-radius:0;"></span>awakening</span>
+      <span><span class="dot" style="width:12px;height:0;border-top:1.5px dashed var(--target-line);border-radius:0;background:none;"></span>10:30p target bedtime</span>
+    </div>
+  </div>
+
+  <div class="card-row">
+    <div class="card">
+      <div class="card-title" style="font-size:14px;">Wind-down routine</div>
+      <div class="card-sub" style="font-size:11px;">Stretch and reading: any real effort counts. TV and phone: less is better.</div>
+      <div class="row" style="margin-bottom:10px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">Stretched</span>${windRow('stretch')}</div>
+      <div class="row" style="margin-bottom:10px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">Read</span>${windRow('read')}</div>
+      <div class="row" style="margin-bottom:10px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">TV</span>${windRow('tv')}</div>
+      <div class="row" style="margin-bottom:14px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">Phone</span>${windRow('phone')}</div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--gray);"></span>not done</span>
+        <span><span class="dot" style="background:var(--green);"></span>stretch 5min+ / read 15min+ / TV &amp; phone under 15min</span>
+        <span><span class="dot" style="background:var(--yellow);"></span>stretch &lt;5min / read &lt;15min / TV &amp; phone 15–30min</span>
+        <span><span class="dot" style="background:var(--red);"></span>TV / phone over 30min</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="font-size:14px;">Sleep disruption</div>
+      <div class="card-sub" style="font-size:11px;">Zopiclone use, awakenings, and naps, per day.</div>
+      <div class="row" style="margin-bottom:10px;"><span style="width:66px;font-size:10px;color:var(--ink-soft);">Zopiclone</span>${zopRow}</div>
+      <div class="row" style="margin-bottom:10px;"><span style="width:66px;font-size:10px;color:var(--ink-soft);">Awakenings</span>${awRow}</div>
+      <div class="row" style="margin-bottom:14px;"><span style="width:66px;font-size:10px;color:var(--ink-soft);">Naps</span>${napRow}</div>
+      <div class="legend">
+        <span>Zopiclone — <span class="dot" style="background:var(--green);"></span>not taken <span class="dot" style="background:var(--red);"></span>taken</span>
+        <span>Awakenings — <span class="dot" style="background:var(--green);"></span>none <span class="dot" style="background:var(--yellow);"></span>1 <span class="dot" style="background:var(--red);"></span>2+</span>
+        <span>Naps — <span class="dot" style="background:var(--gray);"></span>none <span class="dot" style="background:var(--yellow);"></span>under 30min <span class="dot" style="background:var(--red);"></span>30min+</span>
+      </div>
+    </div>
+  </div>`;
 }
 
-function renderScreentime(){
-  const hasAny = rawEntries.some(e=>e.screentime_hours!==null);
-  const card = document.getElementById('screentimeCard');
-  if(!hasAny){
-    card.innerHTML = '<div class="empty-state">No RescueTime data yet. This fills in automatically once a day or two of phone activity has synced.</div>';
+/* ---------- Exercise tab ---------- */
+
+const PHYSIO_ROUTINES = [
+  { label:'Back/Core/Pelvis', keys:['back','core','pelvis'] },
+  { label:'Elbow & Arms', keys:['elbow','arm'] },
+  { label:'Knee & Glutes', keys:['knee','glute'] },
+];
+
+function physioStatus(entries, keys){
+  const matches = entries.filter(ex => keys.some(k => (ex.activity||'').toLowerCase().includes(k)));
+  if(!matches.length) return 'none';
+  const text = matches.map(m=>(m.activity||'')+' '+(m.details||'')).join(' ').toLowerCase();
+  if(text.includes('full')) return 'full';
+  return 'partial';
+}
+
+function renderExercise(week){
+  const days = week.map(w=>({ ...w, exercise: w.entry ? w.entry.exercise : [] }));
+  const stepsArr = days.map(d=>d.entry?d.entry.steps:null);
+  const activeDays = days.filter(d=> (d.entry && d.entry.steps>0) || d.exercise.length>0).length;
+  const sessions = days.reduce((s,d)=>s+d.exercise.length,0);
+  const avgSteps = avg(stepsArr);
+  const avgCal = avg(days.map(d=>d.entry?d.entry.total_calories:null));
+  const maxSteps = Math.max(1000, ...stepsArr.filter(s=>s!==null));
+
+  const stepsBars = days.map(d=>{
+    const s = d.entry ? d.entry.steps : null;
+    const h = s ? Math.max(4, s/maxSteps*60) : 0;
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:22px;"><div style="width:16px;height:${h}px;border-radius:5px 5px 0 0;background:${s?'var(--green)':'var(--track)'};"></div><span style="font-size:9px;color:var(--ink-soft);">${d.weekday}</span></div>`;
+  }).join('');
+
+  const physioRows = PHYSIO_ROUTINES.map(r=>{
+    const dots = days.map(d=>{
+      const st = physioStatus(d.exercise, r.keys);
+      const c = st==='full'?'var(--green)':st==='partial'?'var(--yellow)':'var(--gray)';
+      return `<span style="width:16px;height:16px;border-radius:50%;background:${c};"></span>`;
+    }).join('');
+    return `<div class="row" style="margin-bottom:10px;"><span style="width:110px;font-size:10px;color:var(--ink-soft);">${r.label}</span>${dots}</div>`;
+  }).join('');
+
+  const sessionLog = days.map(d=>{
+    const lines = d.exercise.map(ex=>{
+      const parts = [ex.activity, ex.time, ex.details].filter(Boolean);
+      return `<span>${parts.join(' — ')}</span>`;
+    }).join('');
+    const body = d.exercise.length
+      ? `<div style="display:flex;flex-direction:column;gap:3px;color:var(--ink-soft);font-size:11px;">${lines}</div>`
+      : `<div style="color:oklch(60% .02 70);font-size:11px;">No activity logged</div>`;
+    return `<div style="border-top:1px solid var(--line-soft);padding-top:8px;"><div style="font-weight:600;margin-bottom:4px;">${d.weekday}</div>${body}</div>`;
+  }).join('');
+
+  document.getElementById('tab-exercise').innerHTML = `
+  <div class="card">
+    <div class="card-title">Movement this week</div>
+    <div class="card-sub">Steps and calories from Garmin, sessions from what's logged</div>
+    <div class="stat-strip">
+      <div class="stat"><div class="num">${avgSteps!==null?Math.round(avgSteps).toLocaleString():'–'}</div><div class="label">avg steps</div></div>
+      <div class="stat"><div class="num">${activeDays}/7</div><div class="label">active days</div></div>
+      <div class="stat"><div class="num">${sessions}</div><div class="label">sessions logged</div></div>
+      <div class="stat"><div class="num">${avgCal!==null?Math.round(avgCal).toLocaleString():'–'}</div><div class="label">avg calories</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:14px;">Daily steps</div>
+    <div class="card-sub" style="font-size:11px;">From Garmin, synced each morning</div>
+    <div style="display:flex;gap:10px;align-items:flex-end;height:60px;">${stepsBars}</div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:14px;">Physio routines</div>
+    <div class="card-sub" style="font-size:11px;">Back &amp; Core &amp; Pelvis, Elbow &amp; Arms, Knee &amp; Glutes — done, partial, or skipped each day</div>
+    ${physioRows}
+    <div class="legend-inline" style="border-top:1px solid var(--line-soft);padding-top:10px;">
+      <span><span class="dot" style="background:var(--gray);"></span>not done</span>
+      <span><span class="dot" style="background:var(--green);"></span>full routine done</span>
+      <span><span class="dot" style="background:var(--yellow);"></span>partial</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:14px;">This week's sessions</div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:12px;">${sessionLog}</div>
+  </div>`;
+}
+
+/* ---------- Phone tab ---------- */
+
+function renderPhone(week){
+  const days = week;
+  const hoursArr = days.map(d=>d.entry?d.entry.screentime_hours:null);
+  const withData = hoursArr.filter(h=>h!==null);
+  const avgHours = avg(hoursArr);
+  const avgPulse = avg(days.map(d=>d.entry?d.entry.productivity_pulse:null));
+  const overTarget = hoursArr.filter(h=>h!==null&&h>1.5).length;
+  const avgDistracting = avg(days.map(d=>d.entry?d.entry.distracting_pct:null));
+
+  if(!withData.length){
+    document.getElementById('tab-phone').innerHTML = `<div class="card"><div class="card-title">Phone this week</div><div class="empty" style="padding:20px 0;text-align:center;">No RescueTime data yet. This fills in automatically once a day or two of phone activity has synced.</div></div>`;
     return;
   }
-  if(!document.getElementById('screentimeChart')){
-    card.innerHTML = '<div class="chart-wrap"><canvas id="screentimeChart"></canvas></div>';
-  }
-  const agg = aggregate(rawEntries, currentPeriod, ['distracting_pct','productive_pct','social_pct','entertainment_pct']);
-  destroyChart('screentimeChart');
-  const ctx = document.getElementById('screentimeChart');
-  charts.screentimeChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: agg.map(a=>a.label),
-      datasets: [
-        { label:'Distracting %', data: agg.map(a=>a.distracting_pct), borderColor: CLAY, backgroundColor: CLAY, tension:.25 },
-        { label:'Productive %', data: agg.map(a=>a.productive_pct), borderColor: TEAL_DEEP, backgroundColor: TEAL_DEEP, tension:.25 },
-        { label:'Social networking %', data: agg.map(a=>a.social_pct), borderColor: TEAL, backgroundColor: TEAL, tension:.25 },
-      ]
-    },
-    options: chartOptions('% of tracked time')
-  });
+
+  const maxScale = Math.max(2.5, ...withData);
+  const targetPct = 1.5/maxScale*60;
+  const screenBars = days.map(d=>{
+    const h = d.entry ? d.entry.screentime_hours : null;
+    const barH = h ? Math.max(4, h/maxScale*60) : 0;
+    const color = h===null ? 'var(--track)' : h>1.5 ? 'var(--red)' : 'var(--green)';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:22px;"><div style="width:16px;height:${barH}px;border-radius:5px 5px 0 0;background:${color};"></div><span style="font-size:9px;color:var(--ink-soft);">${d.weekday}</span></div>`;
+  }).join('');
+
+  const goesRows = days.map(d=>{
+    const e = d.entry;
+    if(!e || e.productive_pct===null){
+      return `<div class="row"><span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span><span class="empty">no data</span></div>`;
+    }
+    const prod = Math.max(0, e.productive_pct);
+    const dist = Math.max(0, e.distracting_pct);
+    const neutral = Math.max(0, 100-prod-dist);
+    const pulse = e.productivity_pulse!==null ? 'Pulse '+Math.round(e.productivity_pulse) : '–';
+    return `<div class="row">
+      <span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span>
+      <div style="flex:1;height:12px;border-radius:6px;overflow:hidden;display:flex;">
+        <div style="width:${prod}%;background:var(--green);"></div>
+        <div style="width:${neutral}%;background:var(--track);"></div>
+        <div style="width:${dist}%;background:var(--red);"></div>
+      </div>
+      <span style="width:52px;font-size:10px;color:var(--ink-soft);text-align:right;">${pulse}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('tab-phone').innerHTML = `
+  <div class="card">
+    <div class="card-title">Phone this week</div>
+    <div class="card-sub">Target: under 1.5 hours of screen time a day &middot; from RescueTime</div>
+    <div class="stat-strip">
+      <div class="stat"><div class="num">${avgHours!==null?avgHours.toFixed(1)+'h':'–'}</div><div class="label">avg screen time</div></div>
+      <div class="stat"><div class="num">${avgPulse!==null?Math.round(avgPulse):'–'}</div><div class="label">avg productivity pulse</div></div>
+      <div class="stat"><div class="num">${overTarget}/7</div><div class="label">days over target</div></div>
+      <div class="stat"><div class="num">${avgDistracting!==null?Math.round(avgDistracting)+'%':'–'}</div><div class="label">avg distracting</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:15px;">Screen on time</div>
+    <div class="card-sub" style="font-size:11px;">Target: under 1.5 hours a day</div>
+    <div style="position:relative;display:flex;gap:10px;align-items:flex-end;height:60px;padding-top:6px;">
+      <div style="position:absolute;left:0;right:0;bottom:${targetPct}px;height:0;border-top:1px dashed oklch(70% .02 70);"></div>
+      ${screenBars}
+    </div>
+    <div class="legend-inline">
+      <span><span class="dot" style="width:12px;height:0;border-top:1px dashed oklch(70% .02 70);border-radius:0;background:none;"></span>1.5h target</span>
+      <span><span class="dot" style="border-radius:2px;background:var(--green);"></span>under target</span>
+      <span><span class="dot" style="border-radius:2px;background:var(--red);"></span>over target</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="font-size:14px;">Where the time goes</div>
+    <div class="card-sub" style="font-size:11px;">Productive vs. neutral vs. distracting time, with RescueTime's daily productivity pulse (0–100)</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">${goesRows}</div>
+    <div class="legend-inline">
+      <span><span class="dot" style="border-radius:2px;background:var(--green);"></span>productive</span>
+      <span><span class="dot" style="border-radius:2px;background:var(--track);"></span>neutral</span>
+      <span><span class="dot" style="border-radius:2px;background:var(--red);"></span>distracting</span>
+    </div>
+  </div>
+  <div class="card" style="padding:16px 20px;margin-bottom:0;">
+    <div style="font-size:10px;color:var(--ink-soft);">RescueTime tracking is recent — the first day or two under-reports true usage while it was still ramping up, so early numbers may not reflect a real pattern yet.</div>
+  </div>`;
 }
 
-function chartOptions(yLabel){
-  return {
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{ labels:{ color: INK_SOFT, font:{ family:'Inter' } } } },
-    scales:{
-      x:{ grid:{display:false}, ticks:{ color: INK_SOFT, font:{size:11} } },
-      y:{ beginAtZero:true, grid:{color:LINE}, ticks:{ color: INK_SOFT, font:{size:11} }, title:{display:true, text:yLabel, color:INK_SOFT} }
-    }
-  };
+/* ---------- Diet tab ---------- */
+
+function renderDiet(week){
+  const logged = week.filter(d=>d.entry && d.entry.meals).length;
+  const rows = week.map(d=>{
+    const meals = d.entry ? d.entry.meals : '';
+    const body = meals
+      ? `<div style="color:var(--ink-soft);font-size:11px;">${meals}</div>`
+      : `<div style="color:oklch(60% .02 70);font-size:11px;">Not logged</div>`;
+    return `<div style="border-top:1px solid var(--line-soft);padding-top:8px;"><div style="font-weight:600;margin-bottom:4px;${meals?'':'color:oklch(60% .02 70);'}">${d.weekday}</div>${body}</div>`;
+  }).join('');
+
+  document.getElementById('tab-diet').innerHTML = `
+  <div class="card">
+    <div class="card-title">Diet</div>
+    <div class="card-sub" style="margin-bottom:0;">Meals are only captured as free-text notes right now — no structured fields yet. Here's the raw log, ${logged} of 7 days.</div>
+  </div>
+  <div class="card" style="margin-bottom:0;">
+    <div style="display:flex;flex-direction:column;gap:12px;font-size:12px;">${rows}</div>
+    <div style="font-size:10px;color:var(--ink-soft);margin-top:14px;border-top:1px solid var(--line-soft);padding-top:10px;">This becomes more useful once meals have consistent structure — logged at set times, categorized, or with rough portion sizes.</div>
+  </div>`;
 }
 </script>
 </body>
