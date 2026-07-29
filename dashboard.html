@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Habit Log — Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Habits</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#3B362F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Habits">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
@@ -73,6 +86,12 @@ a:hover{color:oklch(45% .06 150);}
 .card-row > .card{flex:1;min-width:0;margin-bottom:0;}
 
 .footer-note{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:12px 16px;font-size:12px;color:var(--ink-soft);}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.mini-toggle{display:flex;gap:4px;background:var(--pill);border-radius:9px;padding:3px;flex-shrink:0;}
+.mini-toggle button{border:none;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;background:transparent;color:var(--ink-soft);}
+.mini-toggle button.active{background:var(--green);color:#fff;}
+.daylabels{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.daylabels span{width:16px;font-size:8px;text-align:center;color:var(--ink-softer);}
 </style>
 </head>
 <body>
@@ -194,6 +213,10 @@ async function loadEntries(userId){
       total_calories: numOrNull(garmin.total_calories),
       total_sleep_min: numOrNull(garmin.total_sleep_min),
       awake_min: numOrNull(garmin.awake_min),
+      light_sleep_min: numOrNull(garmin.light_sleep_min),
+      deep_sleep_min: numOrNull(garmin.deep_sleep_min),
+      rem_sleep_min: numOrNull(garmin.rem_sleep_min),
+      kss_waking: numOrNull(sleep.kss_waking),
       bedtime: sleep.bedtime || null,
       wake_time: sleep.wake_time || null,
       garmin_sleep_start: garmin.sleep_start || null,
@@ -293,8 +316,19 @@ document.querySelectorAll('#tabbar button').forEach(btn=>{
   });
 });
 
+let currentWeek = null;
+let sleepView = 'duration';
+function setSleepView(v){ sleepView = v; if(currentWeek) renderSleep(currentWeek); }
+
+function dayHeaderRow(width){
+  const spacer = `<span style="width:${width}px;"></span>`;
+  const cells = currentWeek.map(d=>`<span>${d.weekday[0]}</span>`).join('');
+  return `<div class="daylabels">${spacer}${cells}</div>`;
+}
+
 function renderAll(){
   const week = lastNDates(7);
+  currentWeek = week;
   renderSleep(week);
   renderExercise(week);
   renderPhone(week);
@@ -321,6 +355,11 @@ function renderSleep(week){
   const avgWake = avg(days.map(d=>d.wakeMin!==null?pctFromWindow(d.wakeMin):null));
   const avgSleep = avg(days.map(d=>d.totalSleep));
   const avgAw = avg(days.map(d=>d.awCount));
+  const avgAwakeMin = avg(days.map(d=>d.entry?d.entry.awake_min:null));
+  const avgLight = avg(days.map(d=>d.entry?d.entry.light_sleep_min:null));
+  const avgDeep = avg(days.map(d=>d.entry?d.entry.deep_sleep_min:null));
+  const avgRem = avg(days.map(d=>d.entry?d.entry.rem_sleep_min:null));
+  const avgKss = avg(days.map(d=>d.entry?d.entry.kss_waking:null));
 
   const bedClock = avgBed!==null ? fmtClock((22*60+avgBed/100*600)%1440) : '–';
   const wakeClock = avgWake!==null ? fmtClock((22*60+avgWake/100*600)%1440) : '–';
@@ -339,7 +378,7 @@ function renderSleep(week){
       if(p===null) return '';
       return `<div style="position:absolute;top:50%;left:${p}%;width:2px;height:10px;background:var(--paper);transform:translate(-50%,-50%);"></div>`;
     }).join('');
-    const awLabel = d.awCount===0 ? 'no awakenings' : d.awCount+' awakening'+(d.awCount>1?'s':'');
+    const awLabel = (d.entry && d.entry.awake_min!==null && d.entry.awake_min!==undefined) ? Math.round(d.entry.awake_min)+'m awake' : (d.awCount===0 ? 'no awakenings' : d.awCount+' awakening'+(d.awCount>1?'s':''));
     return `<div class="row">
       <span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span>
       <span style="width:44px;font-size:10px;font-weight:500;color:var(--ink-soft);text-align:right;">${fmtClock(d.bedMin)}</span>
@@ -399,15 +438,38 @@ function renderSleep(week){
     }).join('');
   }
 
-  document.getElementById('tab-sleep').innerHTML = `
-  <div class="card">
-    <div class="card-title">Sleep this week</div>
+  const maxStageTotal = Math.max(1, ...days.map(d=>{
+    const e = d.entry;
+    if(!e || e.light_sleep_min===null||e.deep_sleep_min===null||e.rem_sleep_min===null) return 0;
+    return (e.light_sleep_min||0)+(e.deep_sleep_min||0)+(e.rem_sleep_min||0);
+  }));
+
+  const stageRows = days.map(d=>{
+    const e = d.entry;
+    if(!e || e.light_sleep_min===null||e.deep_sleep_min===null||e.rem_sleep_min===null){
+      return `<div class="row"><span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span><span class="empty" style="flex:1;">no stage data</span></div>`;
+    }
+    const light = e.light_sleep_min, deep = e.deep_sleep_min, rem = e.rem_sleep_min;
+    const deepW = deep/maxStageTotal*100, lightW = light/maxStageTotal*100, remW = rem/maxStageTotal*100;
+    return `<div class="row">
+      <span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span>
+      <div style="position:relative;flex:1;height:18px;">
+        <div style="position:absolute;top:50%;left:0;right:0;height:6px;background:var(--track);border-radius:3px;transform:translateY(-50%);"></div>
+        <div style="position:absolute;top:50%;left:0%;width:${deepW}%;height:10px;background:oklch(42% .1 275);border-radius:5px 0 0 5px;transform:translateY(-50%);"></div>
+        <div style="position:absolute;top:50%;left:${deepW}%;width:${lightW}%;height:10px;background:oklch(68% .08 250);transform:translateY(-50%);"></div>
+        <div style="position:absolute;top:50%;left:${deepW+lightW}%;width:${remW}%;height:10px;background:oklch(80% .1 310);border-radius:0 5px 5px 0;transform:translateY(-50%);"></div>
+      </div>
+      <span style="width:150px;font-size:10px;color:var(--ink-soft);text-align:right;">${Math.round(deep)}m deep &middot; ${Math.round(light)}m light &middot; ${Math.round(rem)}m REM</span>
+    </div>`;
+  }).join('');
+
+  const durationBlock = `
     <div class="card-sub">Bedtime to wake, with breaks in the night marked</div>
     <div class="stat-strip">
       <div class="stat"><div class="num">${bedClock}</div><div class="label">avg bedtime</div></div>
       <div class="stat"><div class="num">${wakeClock}</div><div class="label">avg wake</div></div>
       <div class="stat"><div class="num">${fmtDur(avgSleep)}</div><div class="label">avg sleep</div></div>
-      <div class="stat"><div class="num">${avgAw!==null?avgAw.toFixed(1):'–'}</div><div class="label">avg awakenings</div></div>
+      <div class="stat"><div class="num">${avgAwakeMin!==null?Math.round(avgAwakeMin)+'m':'–'}</div><div class="label">avg awake</div></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px;">${rows}</div>
     <div class="row" style="margin-top:2px;">
@@ -420,13 +482,40 @@ function renderSleep(week){
       <span><span class="dot" style="width:16px;height:8px;border-radius:4px;background:var(--red);"></span>under 7h</span>
       <span><span class="dot" style="width:2px;height:9px;background:var(--paper);border:1px solid var(--line);border-radius:0;"></span>awakening</span>
       <span><span class="dot" style="width:12px;height:0;border-top:1.5px dashed var(--target-line);border-radius:0;background:none;"></span>10:30p target bedtime</span>
+    </div>`;
+
+  const stagesBlock = `
+    <div class="card-sub">Minutes spent in each sleep stage, by night</div>
+    <div class="stat-strip">
+      <div class="stat"><div class="num">${avgLight!==null?Math.round(avgLight)+'m':'–'}</div><div class="label">avg light</div></div>
+      <div class="stat"><div class="num">${avgDeep!==null?Math.round(avgDeep)+'m':'–'}</div><div class="label">avg deep</div></div>
+      <div class="stat"><div class="num">${avgRem!==null?Math.round(avgRem)+'m':'–'}</div><div class="label">avg REM</div></div>
+      <div class="stat"><div class="num">${avgKss!==null?avgKss.toFixed(1):'–'}</div><div class="label">avg KSS</div></div>
     </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px;">${stageRows}</div>
+    <div class="legend-inline">
+      <span><span class="dot" style="width:16px;height:8px;border-radius:4px;background:oklch(42% .1 275);"></span>deep</span>
+      <span><span class="dot" style="width:16px;height:8px;border-radius:4px;background:oklch(68% .08 250);"></span>light</span>
+      <span><span class="dot" style="width:16px;height:8px;border-radius:4px;background:oklch(80% .1 310);"></span>REM</span>
+    </div>`;
+
+  document.getElementById('tab-sleep').innerHTML = `
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title" style="margin-bottom:0;">Sleep this week</div>
+      <div class="mini-toggle">
+        <button class="${sleepView==='duration'?'active':''}" onclick="setSleepView('duration')">Duration</button>
+        <button class="${sleepView==='stages'?'active':''}" onclick="setSleepView('stages')">Stages</button>
+      </div>
+    </div>
+    ${sleepView==='duration' ? durationBlock : stagesBlock}
   </div>
 
   <div class="card-row">
     <div class="card">
       <div class="card-title" style="font-size:14px;">Wind-down routine</div>
       <div class="card-sub" style="font-size:11px;">Stretch and reading: any real effort counts. TV and phone: less is better.</div>
+      ${dayHeaderRow(52)}
       <div class="row" style="margin-bottom:10px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">Stretched</span>${windRow('stretch')}</div>
       <div class="row" style="margin-bottom:10px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">Read</span>${windRow('read')}</div>
       <div class="row" style="margin-bottom:10px;"><span style="width:52px;font-size:10px;color:var(--ink-soft);">TV</span>${windRow('tv')}</div>
@@ -441,6 +530,7 @@ function renderSleep(week){
     <div class="card">
       <div class="card-title" style="font-size:14px;">Sleep disruption</div>
       <div class="card-sub" style="font-size:11px;">Zopiclone use, awakenings, and naps, per day.</div>
+      ${dayHeaderRow(66)}
       <div class="row" style="margin-bottom:10px;"><span style="width:66px;font-size:10px;color:var(--ink-soft);">Zopiclone</span>${zopRow}</div>
       <div class="row" style="margin-bottom:10px;"><span style="width:66px;font-size:10px;color:var(--ink-soft);">Awakenings</span>${awRow}</div>
       <div class="row" style="margin-bottom:14px;"><span style="width:66px;font-size:10px;color:var(--ink-soft);">Naps</span>${napRow}</div>
@@ -469,6 +559,13 @@ function physioStatus(entries, keys){
   return 'partial';
 }
 
+const ACTIVITY_TYPES = [
+  { label:'Running', keys:['run'] },
+  { label:'Biking', keys:['bik','cycl'] },
+  { label:'Swimming', keys:['swim'] },
+  { label:'Tennis', keys:['tennis'] },
+];
+
 function renderExercise(week){
   const days = week.map(w=>({ ...w, exercise: w.entry ? w.entry.exercise : [] }));
   const stepsArr = days.map(d=>d.entry?d.entry.steps:null);
@@ -477,12 +574,19 @@ function renderExercise(week){
   const avgSteps = avg(stepsArr);
   const avgCal = avg(days.map(d=>d.entry?d.entry.total_calories:null));
   const maxSteps = Math.max(1000, ...stepsArr.filter(s=>s!==null));
+  const niceMax = Math.max(5000, Math.ceil(maxSteps/5000)*5000);
 
   const stepsBars = days.map(d=>{
     const s = d.entry ? d.entry.steps : null;
-    const h = s ? Math.max(4, s/maxSteps*60) : 0;
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:22px;"><div style="width:16px;height:${h}px;border-radius:5px 5px 0 0;background:${s?'var(--green)':'var(--track)'};"></div><span style="font-size:9px;color:var(--ink-soft);">${d.weekday}</span></div>`;
+    const w = s ? Math.max(2, s/niceMax*100) : 0;
+    return `<div class="row"><span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span><div style="position:relative;flex:1;height:16px;"><div style="width:${w}%;height:16px;border-radius:0 5px 5px 0;background:${s?'var(--green)':'var(--track)'};"></div></div><span style="width:52px;font-size:10px;color:var(--ink-soft);text-align:right;">${s!==null?Math.round(s).toLocaleString():'–'}</span></div>`;
   }).join('');
+
+  const stepsAxis = `<div class="row" style="margin-top:6px;"><span style="width:28px;"></span><div style="position:relative;flex:1;height:14px;">
+      <span style="position:absolute;left:0%;font-size:9px;color:var(--ink-softer);">0</span>
+      <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink-softer);">${(niceMax/2).toLocaleString()}</span>
+      <span style="position:absolute;left:100%;transform:translateX(-100%);font-size:9px;color:var(--ink-softer);">${niceMax.toLocaleString()}</span>
+    </div><span style="width:52px;"></span></div>`;
 
   const physioRows = PHYSIO_ROUTINES.map(r=>{
     const dots = days.map(d=>{
@@ -491,6 +595,14 @@ function renderExercise(week){
       return `<span style="width:16px;height:16px;border-radius:50%;background:${c};"></span>`;
     }).join('');
     return `<div class="row" style="margin-bottom:10px;"><span style="width:110px;font-size:10px;color:var(--ink-soft);">${r.label}</span>${dots}</div>`;
+  }).join('');
+
+  const activityRows = ACTIVITY_TYPES.map(a=>{
+    const dots = days.map(d=>{
+      const done = d.exercise.some(ex=>a.keys.some(k=>(ex.activity||'').toLowerCase().includes(k)));
+      return `<span style="width:16px;height:16px;border-radius:50%;background:${done?'var(--green)':'var(--gray)'};"></span>`;
+    }).join('');
+    return `<div class="row" style="margin-bottom:10px;"><span style="width:64px;font-size:10px;color:var(--ink-soft);">${a.label}</span>${dots}</div>`;
   }).join('');
 
   const sessionLog = days.map(d=>{
@@ -510,24 +622,38 @@ function renderExercise(week){
     <div class="card-sub">Steps and calories from Garmin, sessions from what's logged</div>
     <div class="stat-strip">
       <div class="stat"><div class="num">${avgSteps!==null?Math.round(avgSteps).toLocaleString():'–'}</div><div class="label">avg steps</div></div>
+      <div class="stat"><div class="num">${avgCal!==null?Math.round(avgCal).toLocaleString():'–'}</div><div class="label">avg calories</div></div>
       <div class="stat"><div class="num">${activeDays}/7</div><div class="label">active days</div></div>
       <div class="stat"><div class="num">${sessions}</div><div class="label">sessions logged</div></div>
-      <div class="stat"><div class="num">${avgCal!==null?Math.round(avgCal).toLocaleString():'–'}</div><div class="label">avg calories</div></div>
     </div>
   </div>
   <div class="card">
     <div class="card-title" style="font-size:14px;">Daily steps</div>
     <div class="card-sub" style="font-size:11px;">From Garmin, synced each morning</div>
-    <div style="display:flex;gap:10px;align-items:flex-end;height:60px;">${stepsBars}</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">${stepsBars}</div>
+    ${stepsAxis}
   </div>
-  <div class="card">
-    <div class="card-title" style="font-size:14px;">Physio routines</div>
-    <div class="card-sub" style="font-size:11px;">Back &amp; Core &amp; Pelvis, Elbow &amp; Arms, Knee &amp; Glutes — done, partial, or skipped each day</div>
-    ${physioRows}
-    <div class="legend-inline" style="border-top:1px solid var(--line-soft);padding-top:10px;">
-      <span><span class="dot" style="background:var(--gray);"></span>not done</span>
-      <span><span class="dot" style="background:var(--green);"></span>full routine done</span>
-      <span><span class="dot" style="background:var(--yellow);"></span>partial</span>
+  <div class="card-row">
+    <div class="card">
+      <div class="card-title" style="font-size:14px;">Physio routines</div>
+      <div class="card-sub" style="font-size:11px;">Back &amp; Core &amp; Pelvis, Elbow &amp; Arms, Knee &amp; Glutes — done, partial, or skipped each day</div>
+      ${dayHeaderRow(110)}
+      ${physioRows}
+      <div class="legend-inline" style="border-top:1px solid var(--line-soft);padding-top:10px;">
+        <span><span class="dot" style="background:var(--gray);"></span>not done</span>
+        <span><span class="dot" style="background:var(--green);"></span>full routine done</span>
+        <span><span class="dot" style="background:var(--yellow);"></span>partial</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="font-size:14px;">Activities</div>
+      <div class="card-sub" style="font-size:11px;">Whether each activity happened, per day</div>
+      ${dayHeaderRow(64)}
+      ${activityRows}
+      <div class="legend-inline" style="border-top:1px solid var(--line-soft);padding-top:10px;">
+        <span><span class="dot" style="background:var(--gray);"></span>not done</span>
+        <span><span class="dot" style="background:var(--green);"></span>done</span>
+      </div>
     </div>
   </div>
   <div class="card">
@@ -553,13 +679,19 @@ function renderPhone(week){
   }
 
   const maxScale = Math.max(2.5, ...withData);
-  const targetPct = 1.5/maxScale*60;
+  const niceMax = Math.ceil(maxScale);
+  const targetPct = 1.5/niceMax*100;
   const screenBars = days.map(d=>{
     const h = d.entry ? d.entry.screentime_hours : null;
-    const barH = h ? Math.max(4, h/maxScale*60) : 0;
+    const w = h ? Math.max(2, h/niceMax*100) : 0;
     const color = h===null ? 'var(--track)' : h>1.5 ? 'var(--red)' : 'var(--green)';
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:22px;"><div style="width:16px;height:${barH}px;border-radius:5px 5px 0 0;background:${color};"></div><span style="font-size:9px;color:var(--ink-soft);">${d.weekday}</span></div>`;
+    return `<div class="row"><span style="width:28px;font-size:11px;color:var(--ink-soft);">${d.weekday}</span><div style="position:relative;flex:1;height:16px;"><div style="width:${w}%;height:16px;border-radius:0 5px 5px 0;background:${color};"></div><div style="position:absolute;top:-4px;bottom:-4px;left:${targetPct}%;width:0;border-left:1.5px dashed var(--target-line);"></div></div><span style="width:52px;font-size:10px;color:var(--ink-soft);text-align:right;">${h!==null?h.toFixed(1)+'h':'–'}</span></div>`;
   }).join('');
+  const screenAxis = `<div class="row" style="margin-top:6px;"><span style="width:28px;"></span><div style="position:relative;flex:1;height:14px;">
+      <span style="position:absolute;left:0%;font-size:9px;color:var(--ink-softer);">0</span>
+      <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink-softer);">${(niceMax/2).toFixed(1)}h</span>
+      <span style="position:absolute;left:100%;transform:translateX(-100%);font-size:9px;color:var(--ink-softer);">${niceMax}h</span>
+    </div><span style="width:52px;"></span></div>`;
 
   const goesRows = days.map(d=>{
     const e = d.entry;
@@ -591,16 +723,10 @@ function renderPhone(week){
       <div class="stat"><div class="num">${overTarget}/7</div><div class="label">days over target</div></div>
       <div class="stat"><div class="num">${avgDistracting!==null?Math.round(avgDistracting)+'%':'–'}</div><div class="label">avg distracting</div></div>
     </div>
-  </div>
-  <div class="card">
-    <div class="card-title" style="font-size:15px;">Screen on time</div>
-    <div class="card-sub" style="font-size:11px;">Target: under 1.5 hours a day</div>
-    <div style="position:relative;display:flex;gap:10px;align-items:flex-end;height:60px;padding-top:6px;">
-      <div style="position:absolute;left:0;right:0;bottom:${targetPct}px;height:0;border-top:1px dashed oklch(70% .02 70);"></div>
-      ${screenBars}
-    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px;">${screenBars}</div>
+    ${screenAxis}
     <div class="legend-inline">
-      <span><span class="dot" style="width:12px;height:0;border-top:1px dashed oklch(70% .02 70);border-radius:0;background:none;"></span>1.5h target</span>
+      <span><span class="dot" style="width:2px;height:9px;background:transparent;border-left:1.5px dashed var(--target-line);border-radius:0;"></span>1.5h target</span>
       <span><span class="dot" style="border-radius:2px;background:var(--green);"></span>under target</span>
       <span><span class="dot" style="border-radius:2px;background:var(--red);"></span>over target</span>
     </div>
